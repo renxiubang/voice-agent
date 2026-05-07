@@ -1,6 +1,6 @@
 # 智能体语音对话系统（macOS）
 
-[英文版本](README_EN.md)
+[英文版本](README.md)
 
 模块化、全链路流式、全双工的智能体语音对话系统（macOS + Python）
 
