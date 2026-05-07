@@ -2,7 +2,7 @@
 
 A modular, full-link streaming, full-duplex voice agent dialogue system (macOS + Python)
 
-[中文版本](README.md)
+[中文版本](README_CN.md)
 
 ## System Architecture
 
