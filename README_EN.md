@@ -1,4 +1,4 @@
-# Voice Agent Dialogue System
+# Voice Agent Chat System
 
 A modular, full-link streaming, full-duplex voice agent dialogue system (macOS + Python)
 
