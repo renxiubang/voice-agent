@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# 音频文件
+*.wav
+*.mp3
+*.flac
+*.ogg
+
+# 数据文件
+speaker_db.json
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+AppleDouble
+.LSOverride
+
+# 临时文件
+*.tmp
+*.bak

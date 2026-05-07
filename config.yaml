@@ -1,0 +1,37 @@
+# 网关层配置
+gateway:
+  host: "0.0.0.0"
+  port: 8000
+  websocket_path: "/ws"
+
+# 听觉层配置
+auditory:
+  # 音频采集
+  sample_rate: 16000
+  channels: 1
+  dtype: "int16"
+  
+  # VAD
+  vad_threshold: 0.5
+  vad_min_silence_ms: 500
+  
+  # 声纹识别
+  speaker_embedding_model: "pyannote/embedding"
+  similarity_threshold: 0.7
+  
+  # ASR
+  asr_model: "large-v3"
+  asr_language: "zh"
+
+# 认知层配置
+cognition:
+  llm_model: "mistralai/Mistral-7B-Instruct-v0.3"
+  max_tokens: 512
+  temperature: 0.7
+  system_prompt: "你是一个智能助手，请用简洁明了的中文回答。"
+
+# 发声层配置
+tts:
+  model: "zh_CN-huayan-medium"
+  sample_rate: 22050
+  buffer_size: 20  # 字符数
