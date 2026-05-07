@@ -30,8 +30,11 @@ cognition:
   temperature: 0.7
   system_prompt: "你是一个智能助手，请用简洁明了的中文回答。"
 
-# 发声层配置
+# 发声层配置 (MLX-Audio + Kokoro)
 tts:
-  model: "zh_CN-huayan-medium"
-  sample_rate: 22050
-  buffer_size: 20  # 字符数
+  model: "mlx-community/Kokoro-82M-bf16"  # MLX-Audio Kokoro 模型
+  voice: "zf_xiaobei"  # 中文女声 (可选: zm_yunxi 男声)
+  lang_code: "z"  # z = 中文
+  speed: 1.0  # 语速
+  sample_rate: 24000  # Kokoro 输出 24kHz
+  buffer_size: 20  # 字符数（遇到标点或缓冲区满时触发 TTS）

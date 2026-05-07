@@ -152,23 +152,37 @@ async def test_speaker_recognition():
 
 
 async def test_tts():
-    """测试 TTS 模型"""
+    """测试 TTS 模型 (MLX-Audio + Kokoro)"""
     logger.info("=" * 50)
-    logger.info("测试 TTS 模型")
+    logger.info("测试 TTS 模型 (MLX-Audio + Kokoro)")
     logger.info("=" * 50)
     
     try:
-        from tts.piper_tts import PiperTTSModel
+        from tts.mlx_tts import MLXTTSModel
         from utils.config_loader import load_config
         
         config = load_config()
-        tts_model = PiperTTSModel(config["tts"])
+        tts_model = MLXTTSModel(config["tts"])
         
         # 加载模型 (可能需要下载)
         logger.info("正在加载 TTS 模型 (首次运行会下载)...")
         await tts_model.load_model()
         
-        logger.info("✓ TTS 模型加载成功")
+        # 测试完整合成
+        test_text = "你好，我是一个智能助手。"
+        logger.info(f"测试完整合成: {test_text}")
+        audio_bytes = await tts_model.synthesize(test_text)
+        logger.info(f"✓ 完整合成成功: {len(audio_bytes)} 字节")
+        
+        # 测试流式合成
+        logger.info("测试流式合成...")
+        chunk_count = 0
+        async for audio_chunk in tts_model.synthesize_stream(test_text):
+            chunk_count += 1
+            logger.debug(f"  收到第 {chunk_count} 块: {len(audio_chunk)} 字节")
+        
+        logger.info(f"✓ 流式合成成功: {chunk_count} 块")
+        logger.info("✓ TTS 模型测试通过")
         return True
         
     except Exception as e:

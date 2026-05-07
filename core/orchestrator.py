@@ -74,10 +74,10 @@ class Orchestrator:
         self.llm_model = llm.LLMModel(self.config["cognition"])
         await self.llm_model.load_model()
         
-        # 初始化发声层
-        from tts import piper_tts
+        # 初始化发声层 (MLX-Audio + Kokoro)
+        from tts import mlx_tts
         
-        self.tts_engine = piper_tts.PiperTTSModel(self.config["tts"])
+        self.tts_engine = mlx_tts.MLXTTSModel(self.config["tts"])
         await self.tts_engine.load_model()
         
         logger.info("所有模块初始化完成")
@@ -142,10 +142,10 @@ class Orchestrator:
     
     async def tts_loop(self):
         """
-        发声层主循环
-        从 llm_queue 取出文本，拼接后送入 TTS
+        发声层主循环（真正流式输出）
+        从 llm_queue 取出文本，使用流式 TTS 逐块输出音频
         """
-        logger.info("发声层循环启动")
+        logger.info("发声层循环启动（流式输出）")
         
         buffer = ""
         tts_config = self.config["tts"]
@@ -157,14 +157,19 @@ class Orchestrator:
                 token = await self.llm_queue.get()
                 buffer += token
                 
-                # 遇到标点符号或缓冲区满，送入 TTS
+                # 遇到标点符号或缓冲区满，送入 TTS（流式）
                 if token in "，。！？；" or len(buffer) >= buffer_size:
-                    # TTS 生成音频
-                    audio_data = await self.tts_engine.synthesize(buffer)
-                    buffer = ""
+                    logger.debug(f"TTS 流式合成: {buffer}")
                     
-                    # 放入 tts_queue
-                    await self.tts_queue.put(audio_data)
+                    # 使用流式 TTS，逐块输出音频
+                    chunk_count = 0
+                    async for audio_chunk in self.tts_engine.synthesize_stream(buffer):
+                        # 立即将每个音频块放入 tts_queue
+                        await self.tts_queue.put(audio_chunk)
+                        chunk_count += 1
+                    
+                    logger.debug(f"TTS 流式合成完成: {chunk_count} 块")
+                    buffer = ""
                 
             except Exception as e:
                 logger.error(f"发声层错误: {e}")

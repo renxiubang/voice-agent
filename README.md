@@ -1,85 +1,97 @@
-# Voice Agent Chat System
+# 智能体语音对话系统（macOS）
 
-A modular, full-link streaming, full-duplex voice agent dialogue system (macOS + Python)
+模块化、全链路流式、全双工的智能体语音对话系统（macOS + Python）
 
-[中文版本](README_CN.md)
+[English Version](README_EN.md)
 
-## System Architecture
+## 系统架构
 
 ```
-Frontend (Web Audio API) ↔ Gateway Layer (FastAPI + WebSocket) ↔ Auditory Layer (VAD + ASR + Speaker Recognition) ↔ Cognition Layer (LLM) ↔ TTS Layer
+前端 (Web Audio API) ↔ 网关层 (FastAPI + WebSocket) ↔ 听觉层 (VAD + ASR + 声纹) ↔ 认知层 (LLM) ↔ 发声层 (TTS)
 ```
 
-## Tech Stack
+## 技术栈
 
-- **Gateway Layer**: FastAPI + WebSocket
-- **Auditory Layer**: Silero VAD + pyannote.audio + Whisper (pywhispercpp)
-- **Cognition Layer**: Apple MLX (mlx-lm)
-- **TTS Layer**: Piper TTS
-- **Frontend**: Web Audio API + AudioWorklet
+- **网关层**: FastAPI + WebSocket（全双工通信）
+- **听觉层**: Silero VAD + pyannote.audio + Whisper (pywhispercpp)
+- **认知层**: Apple MLX (mlx-lm)
+- **发声层**: MLX-Audio + Kokoro TTS（**真正流式输出**）
+- **前端**: Web Audio API + AudioWorklet
 
-## Installation
+## 特性
 
-### Prerequisites
+- ✅ **真正流式 TTS**: MLX-Audio + Kokoro 支持逐块生成音频，无需等待完整文本
+- ✅ **全链路流式**: 从 ASR → LLM → TTS 全程流式处理
+- ✅ **全双工通信**: WebSocket 并行收发，支持打断和实时交互
+- ✅ **Apple Silicon 优化**: MLX 框架充分利用 M1/M2/M3/M4 芯片性能
+- ✅ **中文支持**: Kokoro 模型原生支持中文语音合成
 
-- macOS (Apple Silicon) - Required for Apple MLX
+## 安装
+
+### 系统要求
+
+- macOS (Apple Silicon) - 必需（用于 Apple MLX）
 - Python 3.11+
-- Homebrew (for system dependencies)
+- Homebrew (用于系统依赖)
 
-### Install Dependencies
+### 安装依赖
 
 ```bash
-# Create virtual environment
+# 创建虚拟环境
 conda create -n voice-agent python=3.11
 conda activate voice-agent
 
-# Install system dependencies (macOS)
+# 安装系统依赖 (macOS)
 brew install portaudio espeak
 
-# Install Python dependencies
+# 安装 Python 依赖
 pip install -r requirements.txt
 ```
 
-### Or use the install script
+### 或使用安装脚本
 
 ```bash
 chmod +x install.sh
 ./install.sh
 ```
 
-## Configuration
+## 配置
 
-Edit `config.yaml` to adjust system parameters:
+编辑 `config.yaml` 调整系统参数：
 
 ```yaml
-# Gateway layer config
+# 网关层配置
 gateway:
   host: "0.0.0.0"
   port: 8000
 
-# Auditory layer config
+# 听觉层配置
 auditory:
   sample_rate: 16000
   vad_threshold: 0.5
   similarity_threshold: 0.7
 
-# Cognition layer config
+# 认知层配置
 cognition:
   llm_model: "mistralai/Mistral-7B-Instruct-v0.3"
   max_tokens: 512
   temperature: 0.7
 
-# TTS layer config
+# 发声层配置 (MLX-Audio + Kokoro)
 tts:
-  model: "zh_CN-huayan-medium"
-  sample_rate: 22050
+  model: "mlx-community/Kokoro-82M-bf16"
+  voice: "zf_xiaobei"  # 中文女声 (可选: zm_yunxi 男声)
+  lang_code: "z"  # z = 中文
+  speed: 1.0  # 语速
+  sample_rate: 24000  # Kokoro 输出 24kHz
+  buffer_size: 20  # 字符数（遇到标点或缓冲区满时触发 TTS）
 ```
 
-## Usage
+## 运行
 
-### Start the System
+### 启动系统
 
-1. **Start the backend server**:
+1. **启动后端服务器**:
 
 ```bash
 cd /workspace/voice-agent
@@ -87,269 +99,271 @@ source venv/bin/activate
 python main.py
 ```
 
-2. **Open the frontend page**:
+2. **打开前端页面**:
 
-In your browser, open:
+在浏览器中打开:
 
 ```
 http://localhost:8000
 ```
 
-Or open the file directly:
+或直接打开文件:
 
 ```bash
 open frontend/index.html
 ```
 
-### Use the Voice Agent
+### 使用语音智能体
 
-1. Click the "开始对话 (Start Dialogue)" button
-2. Allow the browser to access your microphone
-3. Speak to the microphone
-4. The system will automatically recognize speech, generate a response, and play the TTS audio
-5. Click "停止对话 (Stop Dialogue)" to end
+1. 点击"开始对话"按钮
+2. 允许浏览器访问麦克风
+3. 对麦克风说话
+4. 系统会自动识别语音、生成回复并播放 TTS 音频
+5. 点击"停止对话"结束
 
-## Project Structure
+## 项目结构
 
 ```
 voice-agent/
-├── config.yaml                 # Configuration file
-├── requirements.txt            # Python dependencies
-├── README.md                   # Project documentation (Chinese)
-├── README_EN.md                # Project documentation (English)
-├── RUN.md                     # Running instructions
-├── install.sh                 # Installation script
-├── main.py                    # Main entry point
-├── test_modules.py            # Module testing script
-│
-├── gateway/                    # Gateway layer
-│   ├── server.py              # FastAPI + WebSocket server
-│   └── connection_manager.py  # WebSocket connection manager
-│
-├── auditory/                   # Auditory layer
+├── config.yaml                 # 配置文件
+├── requirements.txt            # Python 依赖
+├── README.md                   # 项目说明 (中文)
+├── README_EN.md                # 项目说明 (英文)
+├── gateway/                    # 网关层
+│   ├── server.py              # FastAPI + WebSocket 服务器
+│   └── connection_manager.py  # WebSocket 连接管理
+├── auditory/                   # 听觉层
 │   ├── vad.py                # Silero VAD
-│   ├── speaker_recognition.py # pyannote.audio speaker recognition
+│   ├── speaker_recognition.py # pyannote.audio 声纹识别
 │   ├── asr.py                # Whisper ASR
-│   └── audio_processor.py    # Audio capture and preprocessing
-│
-├── cognition/                  # Cognition layer
-│   └── llm.py                # mlx-lm LLM inference
-│
-├── tts/                        # TTS layer
-│   └── piper_tts.py          # Piper TTS engine
-│
-├── core/                       # Core modules
-│   ├── orchestrator.py        # Async orchestrator
-│   └── queues.py              # asyncio.Queue definitions
-│
-├── frontend/                   # Frontend
-│   ├── index.html             # Web page
-│   ├── voice_interface.js     # AudioWorklet + WebSocket client
-│   └── audio_worklet.js      # AudioWorklet processor
-│
-└── utils/                      # Utility functions
-    ├── config_loader.py        # Configuration loader
-    └── audio_utils.py         # Audio processing utilities
+│   └── audio_processor.py    # 音频采集和处理
+├── cognition/                  # 认知层
+│   └── llm.py                # MLX LLM 推理
+├── tts/                        # 发声层 (流式输出)
+│   └── mlx_tts.py            # MLX-Audio + Kokoro TTS
+├── core/                       # 核心模块
+│   ├── orchestrator.py        # 异步编排器
+│   └── queues.py              # asyncio.Queue 定义
+├── frontend/                   # 前端
+│   ├── index.html             # 网页界面
+│   ├── voice_interface.js     # AudioWorklet + WebSocket 客户端
+│   └── audio_worklet.js      # AudioWorklet 处理器
+└── utils/                      # 工具函数
+    ├── config_loader.py        # 配置加载器
+    └── audio_utils.py         # 音频处理工具
 ```
 
-## Key Features
+## 核心特性
 
-### 1. Modular Cascade Architecture
+### 1. 真正流式 TTS
 
-The system is divided into four independent modules:
-- **Gateway Layer**: Handles WebSocket connections
-- **Auditory Layer**: VAD + Speaker Recognition + ASR
-- **Cognition Layer**: LLM inference
-- **TTS Layer**: Text-to-Speech synthesis
+使用 MLX-Audio + Kokoro 实现真正的流式输出：
 
-Each module runs as an independent async task, communicating via `asyncio.Queue`.
+```python
+# TTS 引擎本身是迭代器，逐块生成音频
+async for audio_chunk in tts_engine.synthesize_stream(text):
+    # 立即发送音频块（无需等待完整合成）
+    await websocket.send_bytes(audio_chunk)
+```
 
-### 2. Full-Link Streaming
+### 2. 全链路流式处理
 
-The entire pipeline supports streaming:
-- Audio captured → streamed to backend
-- ASR recognizes → streams text to LLM
-- LLM generates → streams tokens to TTS
-- TTS synthesizes → streams audio to frontend
+整个管道支持流式：
+- 音频采集 → 流式传输到后端
+- ASR 识别 → 流式传输文本到 LLM
+- LLM 生成 → 流式传输 token 到 TTS
+- TTS 合成 → 流式传输音频到前端
 
-This minimizes latency and provides a smooth user experience.
+这最小化了延迟，提供了流畅的用户体验。
 
-### 3. Full-Duplex Communication
+### 3. 全双工通信
 
-The WebSocket connection supports simultaneous bidirectional audio streaming:
-- Frontend can send audio while receiving TTS audio
-- Backend can process audio while sending TTS audio
+WebSocket 连接支持同时双向音频流：
+- 前端可以在接收 TTS 音频时发送音频
+- 后端可以在发送 TTS 音频时处理音频
 
-### 4. Speaker Recognition
+### 4. 声纹识别
 
-The system supports speaker registration and recognition:
-- Register a speaker's voiceprint
-- Only recognize and process speech from registered speakers
-- Prevents unauthorized users from triggering the voice agent
+系统支持声纹注册和识别：
+- 注册说话人的声纹
+- 只识别和处理已注册说话人的语音
+- 防止未授权用户触发语音智能体
 
-## Testing
+## 测试
 
-### Test All Modules
+### 测试所有模块
 
 ```bash
 python test_modules.py
 ```
 
-### Test Individual Modules
+### 测试单独模块
 
 ```bash
-# Test configuration loader
+# 测试配置加载器
 python utils/config_loader.py
 
-# Test queue manager
-python -c "from core.queues import get_audio_queue; import asyncio; asyncio.run(get_audio_queue().put('test'))"
-
-# Test VAD model
+# 测试 VAD 模型
 python auditory/vad.py
 
-# Test ASR model
+# 测试 ASR 模型
 python auditory/asr.py
 
-# Test speaker recognition model
+# 测试声纹识别模型
 python auditory/speaker_recognition.py
 
-# Test TTS model
-python tts/piper_tts.py
+# 测试 TTS 模型 (MLX-Audio + Kokoro)
+python tts/mlx_tts.py
 ```
 
-## Troubleshooting
+## 故障排除
 
-### 1. mlx-lm installation failed
+### 1. mlx-lm 安装失败
 
-**Error**: `pip install mlx-lm` failed
+**错误**: `pip install mlx-lm` 失败
 
-**Solution**: Ensure you are on macOS (Apple Silicon) and have Xcode Command Line Tools installed.
+**解决方案**: 确保你在 macOS (Apple Silicon) 上，并安装了 Xcode 命令行工具。
 
 ```bash
 xcode-select --install
 ```
 
-### 2. pyannote.audio model download failed
+### 2. pyannote.audio 模型下载失败
 
-**Error**: Failed to download model from HuggingFace Hub
+**错误**: 从 HuggingFace Hub 下载模型失败
 
-**Solution**: Set HuggingFace Hub mirror or use a proxy.
+**解决方案**: 设置 HuggingFace Hub 镜像或使用代理。
 
 ```bash
 export HF_ENDPOINT=https://hf-mirror.com
 ```
 
-### 3. Piper TTS not installed
+### 3. 音频设备未找到
 
-**Error**: `piper: command not found`
+**错误**: `sounddevice.PortAudioError: No Default Output Device Available`
 
-**Solution**: Install Piper TTS.
-
-```bash
-pip install piper-tts
-```
-
-### 4. Audio device not found
-
-**Error**: `sounddevice.PortAudioError: No Default Output Device Available`
-
-**Solution**: Check audio device connection, or specify device ID in code.
+**解决方案**: 检查音频设备连接，或在代码中指定设备 ID。
 
 ```python
 import sounddevice as sd
-print(sd.query_devices())  # View available devices
+print(sd.query_devices())  # 查看可用设备
 ```
 
-## How It Works
+### 4. MLX-Audio 模型下载失败
 
-### Audio Processing Pipeline
+**错误**: 从 HuggingFace Hub 下载 Kokoro 模型失败
 
-1. **Audio Capture**: 
-   - Frontend captures microphone audio using `MediaRecorder` (or `AudioWorklet`)
-   - Audio format: PCM 16-bit, 16kHz, mono
+**解决方案**: 设置 HuggingFace Hub 镜像。
 
-2. **VAD Detection**:
-   - Silero VAD detects speech activity
-   - Filters out silence and noise
+```bash
+export HF_ENDPOINT=https://hf-mirror.com
+```
 
-3. **Speaker Recognition**:
-   - pyannote.audio extracts speaker embedding
-   - Compares with registered speakers
-   - Only proceeds if speaker is recognized
+## 工作原理
 
-4. **Speech Recognition**:
-   - Whisper (pywhispercpp) transcribes speech to text
-   - Supports Chinese and English
+### 音频处理管道
 
-5. **LLM Inference**:
-   - mlx-lm runs LLM on Apple Silicon
-   - Streaming generation (token by token)
+1. **音频采集**:
+   - 前端使用 `MediaRecorder` (或 `AudioWorklet`) 采集麦克风音频
+   - 音频格式: PCM 16-bit, 16kHz, mono
 
-6. **TTS Synthesis**:
-   - Piper TTS converts text to speech
-   - Streaming synthesis (sentence by sentence)
+2. **VAD 检测**:
+   - Silero VAD 检测语音活动
+   - 过滤静音和噪声
 
-7. **Audio Playback**:
-   - Frontend receives TTS audio via WebSocket
-   - Plays audio using Web Audio API
+3. **声纹识别**:
+   - pyannote.audio 提取说话人嵌入
+   - 与已注册说话人比较
+   - 只在识别到已注册说话人时继续
 
-### Async Orchestrator
+4. **语音识别**:
+   - Whisper (pywhispercpp) 将语音转为文本
+   - 支持中文和英文
 
-The `Orchestrator` class manages the entire pipeline:
+5. **LLM 推理**:
+   - mlx-lm 在 Apple Silicon 上运行 LLM
+   - 流式生成 (token by token)
+
+6. **TTS 合成**:
+   - MLX-Audio + Kokoro TTS 将文本转为语音
+   - **真正流式合成** (逐块生成音频)
+
+7. **音频播放**:
+   - 前端通过 WebSocket 接收 TTS 音频
+   - 使用 Web Audio API 播放音频
+
+### 异步编排器
+
+`Orchestrator` 类管理整个管道：
 
 ```python
-# Initialize modules
+# 初始化模块
 await orchestrator.initialize_modules()
 
-# Start async loops
+# 启动异步循环
 await asyncio.gather(
     orchestrator.auditory_loop(),   # VAD + ASR
     orchestrator.cognition_loop(),   # LLM
-    orchestrator.tts_loop()          # TTS
+    orchestrator.tts_loop()          # TTS (流式)
 )
 ```
 
-### Module Communication
+### 模块通信
 
-Modules communicate via `asyncio.Queue`:
+模块通过 `asyncio.Queue` 通信：
 
 ```
 audio_queue  →  text_queue  →  llm_queue  →  tts_queue
    (bytes)        (str)          (str)          (bytes)
 ```
 
-## Performance Optimization
+## 性能优化
 
-### Latency Optimization
+### 延迟优化
 
-- **Streaming processing**: LLM generates tokens while TTS synthesizes audio
-- **Buffer management**: TTS buffer size adjustable (default: 20 chars)
-- **Model quantization**: Use quantized models for faster inference
+- **流式处理**: LLM 生成 token 的同时 TTS 合成音频
+- **缓冲区管理**: TTS 缓冲区大小可调（默认: 20 字符）
+- **模型量化**: 使用量化模型加速推理
 
-### Memory Optimization
+### 内存优化
 
-- **Audio compression**: PCM 16-bit format
-- **Queue size limits**: Prevent memory overflow
-- **Model unloading**: Unload models when not in use
+- **音频压缩**: PCM 16-bit 格式
+- **队列大小限制**: 防止内存溢出
+- **模型卸载**: 不使用时卸载模型
 
-## Contributing
+## 中文声音选项
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Kokoro 模型支持多种中文声音：
 
-## License
+| 声音 ID | 类型 | 说明 |
+|---------|------|------|
+| `zf_xiaobei` | 女声 | 默认声音 |
+| `zm_yunxi` | 男声 | - |
+| `zf_...` | 女声 | 共 55 种女声 |
+| `zm_...` | 男声 | 共 45 种男声 |
 
-MIT License
+配置方法：
 
-## GitHub Repository
+```yaml
+tts:
+  voice: "zm_yunxi"  # 改为男声
+```
+
+## 许可证
+
+MIT
+
+## GitHub 仓库
 
 https://github.com/renxiubang/voice-agent
 
-## Acknowledgments
+## 致谢
 
-- [Silero VAD](https://github.com/snakers4/silero-vad) - Voice Activity Detection
-- [pyannote.audio](https://github.com/pyannote/pyannote-audio) - Speaker Recognition
-- [Whisper](https://github.com/openai/whisper) - Speech Recognition
-- [mlx-lm](https://github.com/ml-explore/mlx-examples) - LLM Inference on Apple Silicon
-- [Piper TTS](https://github.com/rhasspy/piper) - Text-to-Speech
-- [FastAPI](https://fastapi.tiangolo.com/) - Web Framework
-- [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) - Audio Processing
+- [Silero VAD](https://github.com/snakers4/silero-vad) - 语音活动检测
+- [pyannote.audio](https://github.com/pyannote/pyannote-audio) - 声纹识别
+- [Whisper](https://github.com/openai/whisper) - 语音识别
+- [mlx-lm](https://github.com/ml-explore/mlx-examples) - Apple Silicon 上的 LLM 推理
+- [MLX-Audio](https://github.com/Blaizzy/mlx-audio) - MLX 音频处理（TTS）
+- [Kokoro TTS](https://github.com/ardorleo/kokoro-tts-zh) - 轻量级中文 TTS
+- [FastAPI](https://fastapi.tiangolo.com/) - Web 框架
+- [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) - 音频处理

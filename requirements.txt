@@ -13,8 +13,9 @@ numpy==1.26.3
 # 认知层
 mlx-lm==0.1.0
 
-# 发声层
-piper-tts==1.2.0
+# 发声层 (MLX-Audio + Kokoro)
+mlx-audio
+misaki[zh]  # 中文文本处理
 
 # 工具
 pyyaml==6.0.1
