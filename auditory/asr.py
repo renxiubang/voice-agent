@@ -24,8 +24,9 @@ class ASRModel:
             config: 听觉层配置
         """
         self.config = config
-        self.model_name = config.get("asr_model", "large-v3")
+        self.model_name = config.get("asr_model", "medium")
         self.language = config.get("asr_language", "zh")
+        self.model_path = config.get("asr_model_path")  # 本地模型路径（可选）
         self.model = None
     
     async def load_model(self):
@@ -34,16 +35,24 @@ class ASRModel:
         
         try:
             # 导入 pywhispercpp
-            from pywhispercpp import Whisper
+            from pywhispercpp.model import Model
+            
+            # 优先使用配置的本地模型路径
+            if self.model_path and Path(self.model_path).exists():
+                model_arg = str(Path(self.model_path).absolute())
+                logger.info(f"使用配置的本地模型路径: {self.model_path}")
+            else:
+                # 直接使用模型名称（pywhispercpp 会自动下载官方模型）
+                model_arg = self.model_name
+                logger.info(f"使用 pywhispercpp 官方模型: {self.model_name}")
             
             # 加载模型
-            self.model = Whisper(
-                model_name=self.model_name,
-                language=self.language,
+            self.model = Model(
+                model=model_arg,
                 n_threads=4  # 使用 4 个线程
             )
             
-            logger.info(f"Whisper 模型 {self.model_name} 加载成功")
+            logger.info(f"Whisper 模型加载成功")
             
         except Exception as e:
             logger.error(f"加载 Whisper 模型失败: {e}")
@@ -64,17 +73,13 @@ class ASRModel:
         
         try:
             # 使用 pywhispercpp 进行语音识别
-            result = self.model.transcribe(audio)
+            segments = self.model.transcribe(
+                audio,
+                language=self.language
+            )
             
             # 提取文本
-            if isinstance(result, str):
-                text = result
-            elif isinstance(result, dict):
-                text = result.get("text", "")
-            elif isinstance(result, list) and len(result) > 0:
-                text = result[0].get("text", "")
-            else:
-                text = str(result)
+            text = " ".join([segment.text for segment in segments])
             
             logger.info(f"ASR 识别结果: {text}")
             return text.strip()
@@ -98,15 +103,13 @@ class ASRModel:
         
         try:
             # 使用 pywhispercpp 识别音频文件
-            result = self.model.transcribe_from_file(file_path)
+            segments = self.model.transcribe(
+                file_path,
+                language=self.language
+            )
             
             # 提取文本
-            if isinstance(result, str):
-                text = result
-            elif isinstance(result, dict):
-                text = result.get("text", "")
-            else:
-                text = str(result)
+            text = " ".join([segment.text for segment in segments])
             
             logger.info(f"ASR 文件识别结果: {text}")
             return text.strip()

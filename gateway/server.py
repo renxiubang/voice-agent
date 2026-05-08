@@ -2,10 +2,12 @@
 FastAPI + WebSocket 服务器
 """
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import asyncio
 import logging
 import uuid
+import os
 
 from gateway.connection_manager import manager
 from core.queues import get_audio_queue, get_tts_queue
@@ -21,23 +23,10 @@ app = FastAPI(title="智能体语音对话系统 - 网关层")
 config = load_config()
 gateway_config = config["gateway"]
 
-
-@app.get("/")
-async def root():
-    """根路径 - 返回前端页面"""
-    from fastapi.responses import FileResponse
-    
-    import os
-    frontend_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "frontend",
-        "index.html"
-    )
-    
-    if os.path.exists(frontend_path):
-        return FileResponse(frontend_path)
-    else:
-        return HTMLResponse(content="<h1>智能体语音对话系统</h1><p>前端页面未找到</p>")
+# 获取项目根目录和前端目录
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+frontend_dir = os.path.join(project_root, "frontend")
+logger.info(f"前端目录: {frontend_dir}")
 
 
 @app.websocket("/ws")
@@ -80,13 +69,19 @@ async def receive_audio(websocket: WebSocket, audio_queue: asyncio.Queue):
         websocket: WebSocket 连接
         audio_queue: 音频队列
     """
+    audio_count = 0
     while True:
         try:
             # 接收音频数据 (Binary frame)
             audio_data = await websocket.receive_bytes()
+            audio_count += 1
+            
+            # 记录接收到的音频数据
+            logger.info(f"📥 收到音频数据 #{audio_count}: {len(audio_data)} 字节")
             
             # 放入音频队列
             await audio_queue.put(audio_data)
+            logger.debug(f"✅ 音频数据已放入队列 (队列大小: {audio_queue.qsize()})")
             
         except Exception as e:
             logger.error(f"接收音频错误: {e}")
@@ -129,6 +124,10 @@ def start_server():
     
     logger.info(f"启动网关层服务器: {host}:{port}")
     uvicorn.run(app, host=host, port=port)
+
+
+# 挂载前端目录作为静态文件（放在最后，确保 API 路由优先匹配）
+app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 
 if __name__ == "__main__":

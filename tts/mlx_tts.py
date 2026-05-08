@@ -2,6 +2,10 @@
 MLX-Audio + Kokoro TTS 模型
 真正的流式输出（逐块生成音频）
 """
+# 必须在所有 import 之前设置，否则 huggingface_hub 可能已缓存默认值
+import os
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+
 import numpy as np
 import logging
 from pathlib import Path

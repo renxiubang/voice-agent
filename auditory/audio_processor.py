@@ -1,11 +1,18 @@
 """
 音频采集和预处理模块
+支持两种采集方式：
+1. 前端采集（frontend）：通过 WebSocket 接收前端发送的音频流（浏览器已做 AEC）
+2. 后端采集（backend）：使用 CoreAudioProcessor 直接从麦克风采集音频（启用系统级 AEC）
 """
 import sounddevice as sd
 import numpy as np
 import logging
 from typing import Optional, Callable
 import asyncio
+from pathlib import Path
+
+# 导入后端采集模块
+from .core_audio_processor import CoreAudioProcessor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,7 +21,7 @@ logger = logging.getLogger(__name__)
 class AudioProcessor:
     """
     音频采集和预处理
-    使用 sounddevice 采集麦克风音频，支持回声消除
+    支持前端采集（浏览器 AEC）和后端采集（AVAudioEngine AEC）
     """
     
     def __init__(self):
@@ -24,6 +31,12 @@ class AudioProcessor:
         self.blocksize = 1024
         self.stream = None
         self.callback = None
+        
+        # 输入模式：frontend（前端采集）或 backend（后端采集）
+        self.input_mode = "frontend"
+        
+        # 后端采集处理器
+        self.core_audio_processor = None
         
         # 音频缓冲区
         self.audio_buffer = []
@@ -39,19 +52,28 @@ class AudioProcessor:
         self.sample_rate = config.get("sample_rate", 16000)
         self.channels = config.get("channels", 1)
         self.dtype = config.get("dtype", "int16")
+        self.input_mode = config.get("input_mode", "frontend")
         
-        # 打印可用的音频设备
-        logger.info("可用的音频设备:")
-        devices = sd.query_devices()
-        for i, device in enumerate(devices):
-            logger.info(f"  {i}: {device['name']} (输入: {device['max_input_channels']}, 输出: {device['max_output_channels']})")
+        logger.info(f"音频输入模式: {self.input_mode}")
         
-        # 设置默认输入设备 (macOS 通常使用 "Built-in Microphone")
-        try:
-            sd.default.device = sd.query_devices(kind="input")["name"]
-            logger.info(f"默认输入设备: {sd.default.device}")
-        except Exception as e:
-            logger.warning(f"设置默认输入设备失败: {e}")
+        if self.input_mode == "backend":
+            # 后端采集模式：使用 CoreAudioProcessor
+            logger.info("初始化后端音频采集（CoreAudioProcessor）...")
+            self.core_audio_processor = CoreAudioProcessor(config)
+            await self.core_audio_processor.init()
+            logger.info("✅ 后端音频采集初始化完成")
+            
+        else:
+            # 前端采集模式：使用 sounddevice（仅用于测试）
+            logger.info("前端采集模式：音频将通过 WebSocket 接收")
+            
+            # 打印可用的音频设备（用于调试）
+            logger.info("可用的音频设备:")
+            devices = sd.query_devices()
+            for i, device in enumerate(devices):
+                logger.info(f"  {i}: {device['name']} (输入: {device['max_input_channels']}, 输出: {device['max_output_channels']})")
+            
+            logger.info("✅ 前端音频采集初始化完成")
         
         logger.info("音频处理器初始化完成")
     
@@ -63,11 +85,36 @@ class AudioProcessor:
             callback: 回调函数，接收音频数据 (bytes)
         """
         self.callback = callback
+        
+        # 如果是后端采集模式，同时设置 CoreAudioProcessor 的回调
+        if self.input_mode == "backend" and self.core_audio_processor:
+            self.core_audio_processor.set_callback(callback)
+            logger.info("✅ 后端采集回调已设置")
     
     async def start_stream(self):
-        """启动音频流"""
-        logger.info("正在启动音频流...")
+        """启动音频流（根据 input_mode 选择不同的采集方式）"""
+        logger.info(f"正在启动音频流（模式: {self.input_mode}）...")
         
+        if self.input_mode == "backend":
+            # 后端采集模式：使用 CoreAudioProcessor
+            if not self.core_audio_processor:
+                raise RuntimeError("CoreAudioProcessor 未初始化")
+            
+            await self.core_audio_processor.start_stream()
+            logger.info("✅ 后端音频流已启动（AVAudioEngine + Voice Processing I/O AEC）")
+            
+        else:
+            # 前端采集模式：音频通过 WebSocket 接收，这里不需要启动本地音频流
+            # 但保留 sounddevice 用于本地测试
+            logger.info("前端采集模式：音频将通过 WebSocket 接收")
+            
+            # 可选：启动本地音频流用于测试
+            # self._start_local_stream()
+            
+            logger.info("✅ 前端音频流已启动（WebSocket 接收）")
+    
+    def _start_local_stream(self):
+        """启动本地音频流（用于测试）"""
         def audio_callback(indata, frames, time, status):
             """音频流回调函数"""
             if status:
@@ -92,26 +139,42 @@ class AudioProcessor:
             
             # 启动流
             self.stream.start()
-            logger.info("音频流已启动")
+            logger.info("本地音频流已启动（测试模式）")
             
         except Exception as e:
-            logger.error(f"启动音频流失败: {e}")
+            logger.error(f"启动本地音频流失败: {e}")
             raise
     
     async def stop_stream(self):
-        """停止音频流"""
-        logger.info("正在停止音频流...")
+        """停止音频流（根据 input_mode 选择不同的停止方式）"""
+        logger.info(f"正在停止音频流（模式: {self.input_mode}）...")
         
-        if self.stream:
-            self.stream.stop()
-            self.stream.close()
-            self.stream = None
+        if self.input_mode == "backend":
+            # 后端采集模式：停止 CoreAudioProcessor
+            if self.core_audio_processor:
+                await self.core_audio_processor.stop_stream()
+                logger.info("✅ 后端音频流已停止")
             
-        logger.info("音频流已停止")
+        else:
+            # 前端采集模式：停止本地音频流（如果有）
+            if self.stream:
+                self.stream.stop()
+                self.stream.close()
+                self.stream = None
+                logger.info("本地音频流已停止")
+            
+            # 清空前端音频队列
+            while not self.frontend_audio_queue.empty():
+                try:
+                    self.frontend_audio_queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+            
+            logger.info("✅ 前端音频流已停止（WebSocket 接收已关闭）")
     
     async def record_audio(self, duration_ms: int) -> bytes:
         """
-        录制音频
+        录制音频（根据 input_mode 选择不同的录制方式）
         
         Args:
             duration_ms: 录制时长 (毫秒)
@@ -121,22 +184,34 @@ class AudioProcessor:
         """
         logger.info(f"正在录制音频 ({duration_ms} ms)...")
         
-        # 计算采样点数
-        num_samples = int(self.sample_rate * duration_ms / 1000)
-        
-        # 录制音频
-        audio_data = sd.rec(
-            num_samples,
-            samplerate=self.sample_rate,
-            channels=self.channels,
-            dtype=self.dtype
-        )
-        
-        # 等待录制完成
-        sd.wait()
-        
-        # 转换为 bytes
-        audio_bytes = audio_data.tobytes()
+        if self.input_mode == "backend" and self.core_audio_processor:
+            # 后端采集模式：使用 CoreAudioProcessor
+            logger.info("使用后端采集模式录制音频...")
+            
+            # TODO: 实现 CoreAudioProcessor 的录制功能
+            # 暂时使用占位符
+            audio_bytes = b'\x00' * int(self.sample_rate * duration_ms / 1000 * 2)  # 16-bit = 2 bytes/sample
+            
+        else:
+            # 前端采集模式：使用 sounddevice 录制（用于测试）
+            logger.info("使用本地音频流录制音频...")
+            
+            # 计算采样点数
+            num_samples = int(self.sample_rate * duration_ms / 1000)
+            
+            # 录制音频
+            audio_data = sd.rec(
+                num_samples,
+                samplerate=self.sample_rate,
+                channels=self.channels,
+                dtype=self.dtype
+            )
+            
+            # 等待录制完成
+            sd.wait()
+            
+            # 转换为 bytes
+            audio_bytes = audio_data.tobytes()
         
         logger.info(f"音频录制完成: {len(audio_bytes)} bytes")
         return audio_bytes
@@ -159,15 +234,26 @@ class AudioProcessor:
     
     async def enable_echo_cancellation(self):
         """
-        启用回声消除 (macOS Voice Processing I/O)
-        注意：这需要 Core Audio API 支持，sounddevice 可能不直接支持
+        启用回声消除（根据 input_mode 选择不同的实现）
         """
-        logger.warning("macOS 回声消除需要通过 Core Audio API 实现")
-        logger.warning("sounddevice 可能不直接支持回声消除")
-        logger.warning("建议使用其他音频库 (如 pyaudio) 或系统级回声消除")
-        
-        # TODO: 实现 macOS Voice Processing I/O 回声消除
-        # 可能需要使用 pyaudio 或直接调用 Core Audio API
+        if self.input_mode == "backend":
+            # 后端采集模式：使用 AVAudioEngine 的 Voice Processing I/O
+            logger.info("✅ 后端采集模式：AVAudioEngine 已自动启用 Voice Processing I/O AEC")
+            logger.info("无需额外配置，AVAudioEngine 会在启动时自动启用系统级 AEC")
+            
+        else:
+            # 前端采集模式：使用浏览器 AEC
+            logger.info("✅ 前端采集模式：请在浏览器中启用 echoCancellation")
+            logger.info("示例代码：")
+            logger.info("""
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,  // 启用浏览器回声消除
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+            """)
 
 
 async def main():

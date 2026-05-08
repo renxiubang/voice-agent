@@ -4,18 +4,19 @@ websockets==12.0
 pydantic==2.5.3
 
 # 听觉层
-silero-vad==4.0.0
+silero-vad==5.1.2
 pyannote.audio==3.1.1
 pywhispercpp==1.0.0
-sounddevice==0.4.6
-numpy==1.26.3
 
 # 认知层
-mlx-lm==0.1.0
+mlx-lm
+openai>=1.0.0
 
 # 发声层 (MLX-Audio + Kokoro)
 mlx-audio
-misaki[zh]  # 中文文本处理
+
+# macOS 后端 AEC（可选，仅在使用 backend 采集模式时需要）
+# pyobjc  # 取消注释以启用后端采集模式（需要 macOS 系统）
 
 # 工具
 pyyaml==6.0.1

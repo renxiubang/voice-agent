@@ -24,7 +24,7 @@ source venv/bin/activate
 
 ```bash
 # 安装 Homebrew (如果未安装)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+#/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # 安装 portaudio (用于 sounddevice)
 brew install portaudio
@@ -48,7 +48,7 @@ pip install -r requirements.txt
 # 网关层配置
 gateway:
   host: "0.0.0.0"
-  port: 8000  # WebSocket 端口
+  port: 8800  # WebSocket 端口
 
 # 听觉层配置
 auditory:
@@ -78,14 +78,14 @@ source venv/bin/activate
 python main.py
 ```
 
-服务器将在 `http://localhost:8000` 启动。
+服务器将在 `http://localhost:8800` 启动。
 
 ### 3.2 打开前端页面
 
 在浏览器中打开：
 
 ```
-http://localhost:8000
+http://localhost:8800
 ```
 
 或者使用文件方式打开：
@@ -146,9 +146,65 @@ python tts/piper_tts.py
 python test_modules.py
 ```
 
-## 6. 常见问题
+## 6. 手动下载 Whisper 模型（国内用户）
 
-### 6.1 mlx-lm 安装失败
+如果在国内环境运行，从 Hugging Face 下载 Whisper 模型可能会超时。可以使用以下方法手动下载模型：
+
+### 6.1 从 ModelScope 下载
+
+1. **安装 ModelScope SDK**:
+   ```bash
+   pip install modelscope
+   ```
+
+2. **下载 Whisper 模型**:
+   ```python
+   from modelscope.hub.snapshot_download import snapshot_download
+   
+   # 下载 medium.en 模型（约 1.4GB）
+   model_dir = snapshot_download(
+       'zhongguoa/ggml-medium.en.bin',
+       cache_dir='~/.cache',
+       revision='master'
+   )
+   print(f'模型下载到: {model_dir}')
+   ```
+
+3. **复制模型到 pywhispercpp 目录**:
+   ```bash
+   # 创建目标目录
+   mkdir -p ~/Library/Application\ Support/pywhispercpp/models
+   
+   # 复制模型文件
+   cp ~/.cache/zhongguoa/ggml-medium.en.bin/*/ggml-medium.en.bin ~/Library/Application\ Support/pywhispercpp/models/
+   ```
+
+4. **验证模型文件**:
+   ```bash
+   ls -lh ~/Library/Application\ Support/pywhispercpp/models/ggml-medium.en.bin
+   # 应该显示约 1.4GB 的文件
+   ```
+
+5. **配置 config.yaml**:
+   ```yaml
+   auditory:
+     asr_model: "medium.en"  # pywhispercpp 会自动使用本地模型
+   ```
+
+### 6.2 支持的模型
+
+pywhispercpp 官方支持的模型：
+- `tiny.en`, `tiny`
+- `base.en`, `base`
+- `small.en`, `small`
+- `medium.en`, `medium`
+- `large-v1`, `large`
+
+---
+
+## 7. 常见问题
+
+### 7.1 mlx-lm 安装失败
 
 **错误**: `pip install mlx-lm` 失败
 
@@ -158,7 +214,7 @@ python test_modules.py
 xcode-select --install
 ```
 
-### 6.2 pyannote.audio 下载模型失败
+### 7.2 pyannote.audio 下载模型失败
 
 **错误**: `HuggingFace Hub` 下载模型失败
 
@@ -168,7 +224,7 @@ xcode-select --install
 export HF_ENDPOINT=https://hf-mirror.com
 ```
 
-### 6.3 Piper TTS 未安装
+### 7.3 Piper TTS 未安装
 
 **错误**: `piper: command not found`
 
@@ -178,7 +234,7 @@ export HF_ENDPOINT=https://hf-mirror.com
 pip install piper-tts
 ```
 
-### 6.4 音频设备未找到
+### 7.4 音频设备未找到
 
 **错误**: `sounddevice.PortAudioError: No Default Output Device Available`
 

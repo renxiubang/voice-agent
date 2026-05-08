@@ -8,14 +8,22 @@ echo ""
 
 # 检查 Python 版本
 echo "1. 检查 Python 版本..."
-python3 --version || (echo "错误: 未找到 Python 3" && exit 1)
+PYTHON_CMD="python3.11"
+
+if ! command -v $PYTHON_CMD &> /dev/null; then
+    echo "错误: 未找到 $PYTHON_CMD，请安装 Python 3.11"
+    echo "安装命令: brew install python@3.11"
+    exit 1
+fi
+
+$PYTHON_CMD --version
 echo "✓ Python 检查通过"
 echo ""
 
 # 创建虚拟环境
 echo "2. 创建虚拟环境..."
-if [! -d "venv" ]; then
-    python3 -m venv venv
+if [ ! -d "venv" ]; then
+    $PYTHON_CMD -m venv venv
 fi
 echo "✓ 虚拟环境已创建"
 echo ""
@@ -32,7 +40,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "检测到 macOS 系统，正在安装系统依赖..."
     
     # 检查 Homebrew
-    if! command -v brew &&; then
+    if ! command -v brew &> /dev/null; then
         echo "错误: 未找到 Homebrew，请先安装 Homebrew"
         echo "安装命令: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
         exit 1
@@ -59,7 +67,7 @@ echo ""
 
 # 下载 Whisper 模型 (pywhispercpp 会自动下载)
 echo "6. 预下载 Whisper 模型..."
-python3 -c "
+$PYTHON_CMD -c "
 import asyncio
 from auditory.asr import ASRModel
 from utils.config_loader import load_config
@@ -81,5 +89,5 @@ echo "运行方式:"
 echo "  source venv/bin/activate"
 echo "  python main.py"
 echo ""
-echo "然后打开浏览器访问: http://localhost:8000"
+echo "然后打开浏览器访问: http://localhost:8800"
 echo ""

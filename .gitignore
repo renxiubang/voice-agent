@@ -35,3 +35,6 @@ AppleDouble
 # 临时文件
 *.tmp
 *.bak
+
+# 日志目录
+logs/

@@ -1,11 +1,14 @@
 # 网关层配置
 gateway:
   host: "0.0.0.0"
-  port: 8000
+  port: 8800
   websocket_path: "/ws"
 
 # 听觉层配置
 auditory:
+  # 音频输入模式: "frontend" (前端采集，浏览器 AEC) 或 "backend" (后端采集，AVAudioEngine AEC)
+  input_mode: "frontend"
+  
   # 音频采集
   sample_rate: 16000
   channels: 1
@@ -20,12 +23,31 @@ auditory:
   similarity_threshold: 0.7
   
   # ASR
-  asr_model: "large-v3"
-  asr_language: "zh"
+  asr_model: "medium.en"  # 使用英文 medium 模型（pywhispercpp 官方支持，会自动下载）
+  asr_language: "en"  # 英文识别
+  # asr_model_path: "/path/to/local/model.bin"  # 可选：本地模型路径
+  
+  # 双讲检测
+  double_talk_detection: true
+  tts_playing_threshold: 0.5  # TTS 播放时的音频能量阈值
+  
+  # 打断机制
+  barge_in_enabled: true
+  barge_in_sensitivity: 0.6  # 打断灵敏度
 
 # 认知层配置
 cognition:
-  llm_model: "mistralai/Mistral-7B-Instruct-v0.3"
+  # LLM 模式: "local" (本地 mlx-lm) 或 "api" (OpenAI 兼容 API)
+  llm_mode: "api"
+  
+  # API 模式配置
+  llm_api_base: "http://127.0.0.1:8000/v1"
+  llm_api_key: "omlx-7h3958hwku523nkc"
+  llm_model: "Qwen3.5-9B-MLX-4bit"
+  
+  # 本地模式配置 (llm_mode: "local" 时使用)
+  # llm_local_model: "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit"
+  
   max_tokens: 512
   temperature: 0.7
   system_prompt: "你是一个智能助手，请用简洁明了的中文回答。"

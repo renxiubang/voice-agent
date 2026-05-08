@@ -5,14 +5,34 @@ import asyncio
 import logging
 import signal
 import sys
+import os
+from datetime import datetime
 
-# 配置日志
+# 创建日志目录
+log_dir = "logs"
+os.makedirs(log_dir, exist_ok=True)
+
+# 生成带日期的日志文件名
+log_date = datetime.now().strftime("%Y-%m-%d")
+log_file = os.path.join(log_dir, f"voice_agent_{log_date}.log")
+
+# 配置日志格式
+log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# 配置根日志记录器
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format=log_format,
+    handlers=[
+        # 控制台输出
+        logging.StreamHandler(),
+        # 文件输出（按日期）
+        logging.FileHandler(log_file, encoding="utf-8")
+    ]
 )
 
 logger = logging.getLogger(__name__)
+logger.info(f"日志文件: {log_file}")
 
 
 async def main():
